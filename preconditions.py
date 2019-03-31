@@ -63,6 +63,7 @@ def preconditions(*precs):
         def g(*a, **kw):
             args = inspect.getcallargs(f, *a, **kw)
             for (appargs, _, p) in precinfo:
+
                 cond_response = p(*[args[aa] for aa in appargs])
 
                 if isinstance(cond_response, tuple):
