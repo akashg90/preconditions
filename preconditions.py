@@ -20,8 +20,8 @@ def preconditions(*precs):
 
     precinfo = []
     for p in precs:
-        spec = inspect.getargspec(p)
-        if spec.varargs or spec.keywords:
+        spec = inspect.getfullargspec(p)
+        if spec.varargs or spec.varkw:
             raise PreconditionError(
                 ('Invalid precondition must not accept * nor ** args:\n' +
                  '  {!s}\n')
@@ -35,7 +35,7 @@ def preconditions(*precs):
         precinfo.append( (appargs, closureargs, p) )
 
     def decorate(f):
-        fspec = inspect.getargspec(f)
+        fspec = inspect.getfullargspec(f)
 
         for (appargs, closureargs, p) in precinfo:
             for apparg in appargs:
@@ -63,17 +63,24 @@ def preconditions(*precs):
         def g(*a, **kw):
             args = inspect.getcallargs(f, *a, **kw)
             for (appargs, _, p) in precinfo:
-                if not p(*[args[aa] for aa in appargs]):
-                    raise PreconditionError(
+                cond_response = p(*[args[aa] for aa in appargs])
+
+                if isinstance(cond_response, tuple):
+                    cond, err = cond_response
+                else:
+                    cond, err = cond_response, PreconditionError(
                         'Precondition failed in call {!r}{}:\n  {!s}\n'
-                        .format(
+                            .format(
                             g,
                             inspect.formatargvalues(
                                 fspec.args,
                                 fspec.varargs,
-                                fspec.keywords,
+                                fspec.varkw,
                                 args),
                             stripped_source(p)))
+
+                if not cond:
+                    raise err
 
             return f(*a, **kw)
 
